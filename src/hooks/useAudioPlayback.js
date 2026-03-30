@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { int16ToFloat32, base64ToArrayBuffer } from '../lib/audioUtils'
 
 const PLAYBACK_SAMPLE_RATE = 24000
