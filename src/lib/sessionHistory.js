@@ -68,7 +68,7 @@ export async function generateSummary(transcript, apiKey) {
 
   const ai = new GoogleGenAI({ apiKey })
   const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     contents: `Summarize the following customer service conversation in 2–3 short sentences. State what the customer needed and what was discussed or resolved. Be factual, specific, and concise.\n\n${text}`,
   })
   return response.text?.trim() || 'Summary unavailable.'
