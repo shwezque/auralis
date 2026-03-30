@@ -9,7 +9,7 @@ export const BRANDS = {
     agentInitial: 'R',
     voice: 'Aoede',
     logo: '/logos/rajah.jpeg',
-    avatar: '/avatars/Rayah.png',
+    avatar: '/avatars/rayah.png',
     colors: {
       from: '#8B1F52',
       to: '#5A1235',
@@ -80,7 +80,7 @@ This is a voice conversation. Speak in flowing, natural sentences — never use 
     agentInitial: 'J',
     voice: 'Puck',
     logo: '/logos/jollibee.svg',
-    avatar: '/avatars/Joy.png',
+    avatar: '/avatars/joy.png',
     colors: {
       from: '#E62020',
       to: '#B71010',
@@ -154,7 +154,7 @@ Store and logistics:
     agentInitial: 'G',
     voice: 'Kore',
     logo: '/logos/globe.svg',
-    avatar: '/avatars/Glenda.png',
+    avatar: '/avatars/glenda.png',
     colors: {
       from: '#0066CC',
       to: '#004499',
