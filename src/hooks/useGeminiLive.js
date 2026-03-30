@@ -279,7 +279,7 @@ export function useGeminiLive({
                   startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW,
                   endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH,
                   prefixPaddingMs: 80,
-                  silenceDurationMs: 200,
+                  silenceDurationMs: 100,
                 },
               },
             },
