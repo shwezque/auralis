@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext'
 import { useGeminiLive } from '../hooks/useGeminiLive'
 import BrandLogo from '../components/BrandLogo'
 import VoiceWaveform from '../components/VoiceWaveform'
+import { saveSession } from '../lib/sessionHistory'
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
@@ -171,9 +172,10 @@ function EndConfirm({ onConfirm, onCancel }) {
 // ─── Session page ─────────────────────────────────────────────────────────────
 
 export default function Session() {
-  const { apiKey, selectedBrand, setSessionTranscript, setSessionEndedWithError } = useApp()
+  const { apiKey, selectedBrand, setSessionTranscript, setSessionEndedWithError, sessionStartedAt, setSessionStartedAt } = useApp()
   const navigate = useNavigate()
   const [showEndConfirm, setShowEndConfirm] = useState(false)
+  const [isPushToTalkActive, setIsPushToTalkActive] = useState(false)
   const transcriptBottomRef = useRef(null)
   const userScrolledRef = useRef(false)
   const scrollTimerRef = useRef(null)
@@ -184,6 +186,7 @@ export default function Session() {
       systemPrompt: selectedBrand.systemPrompt,
       voice: selectedBrand.voice,
       agentName: selectedBrand.agentName,
+      canSendAudio: isPushToTalkActive,
     })
 
   // Block browser back-swipe while session is active.
@@ -204,6 +207,9 @@ export default function Session() {
     window.addEventListener('popstate', handlePopstate)
     return () => window.removeEventListener('popstate', handlePopstate)
   }, [status])
+
+  // Record session start time on mount
+  useEffect(() => { setSessionStartedAt(new Date().toISOString()) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-connect on mount
   useEffect(() => { connect() }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -229,6 +235,10 @@ export default function Session() {
 
   function handleEndConfirm() {
     disconnect()
+    const validTranscript = transcript.filter(m => m.text?.trim())
+    if (validTranscript.length > 0) {
+      saveSession({ brand: selectedBrand, transcript: validTranscript, startedAt: sessionStartedAt })
+    }
     setSessionTranscript(transcript)
     setSessionEndedWithError(status === 'error')
     navigate('/summary')
@@ -236,6 +246,15 @@ export default function Session() {
 
   function handleEndCancel() {
     setShowEndConfirm(false)
+  }
+
+  function startPushToTalk() {
+    if (!isActive || isMuted) return
+    setIsPushToTalkActive(true)
+  }
+
+  function stopPushToTalk() {
+    setIsPushToTalkActive(false)
   }
 
   const isActive = status !== 'idle' && status !== 'error'
@@ -251,7 +270,7 @@ export default function Session() {
 
   const stateLabel = status === 'error'
     ? (errorMessage?.split('\n')[0] || 'Something went wrong')
-    : (STATE_LABELS[status] || '')
+    : (isPushToTalkActive ? 'Listening to your tap-to-speak input…' : (STATE_LABELS[status] || ''))
 
   const STATE_LABEL_COLOR = {
     connecting:      'text-cream/50',
@@ -346,78 +365,114 @@ export default function Session() {
 
       {/* Controls dock */}
       <div
-        className="relative flex items-center justify-between px-6 py-4 pb-safe-or-6 flex-shrink-0 border-t"
+        className="relative flex flex-col gap-3 px-6 py-4 pb-safe-or-6 flex-shrink-0 border-t"
         style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}
       >
-        {/* Mute */}
-        <button
-          onClick={toggleMute}
-          disabled={!isActive}
-          className={`
-            w-12 h-12 rounded-full flex items-center justify-center transition-all border
-            disabled:opacity-25 disabled:cursor-not-allowed active:scale-95
-            ${isMuted
-              ? 'border-red-500/40'
-              : 'border-white/10 hover:border-white/20'
-            }
-          `}
-          style={isMuted
-            ? { background: 'rgba(239,68,68,0.15)' }
-            : { background: 'rgba(255,255,255,0.05)' }
-          }
-          aria-label={isMuted ? 'Unmute' : 'Mute'}
-        >
-          {isMuted ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-red-400">
-              <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-cream/50">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill="currentColor"/>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="8" y1="23" x2="16" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          )}
-        </button>
+        <div className="flex items-center justify-center">
+          <button
+            type="button"
+            onMouseDown={startPushToTalk}
+            onMouseUp={stopPushToTalk}
+            onMouseLeave={stopPushToTalk}
+            onTouchStart={startPushToTalk}
+            onTouchEnd={stopPushToTalk}
+            onTouchCancel={stopPushToTalk}
+            disabled={!isActive || isMuted}
+            className={`
+              w-full max-w-xs py-4 rounded-2xl text-sm font-semibold transition-all border select-none
+              disabled:opacity-25 disabled:cursor-not-allowed
+              ${isPushToTalkActive ? 'scale-[0.98]' : 'active:scale-[0.98]'}
+            `}
+            style={isPushToTalkActive
+              ? {
+                  background: `${selectedBrand.colors.from}30`,
+                  borderColor: `${selectedBrand.colors.from}66`,
+                  color: selectedBrand.colors.label,
+                  boxShadow: `0 0 0 8px ${selectedBrand.colors.from}14`,
+                }
+              : {
+                  background: 'rgba(255,255,255,0.04)',
+                  borderColor: 'rgba(255,255,255,0.08)',
+                  color: 'rgba(255,255,255,0.75)',
+                }}
+            aria-label="Tap and hold to speak"
+          >
+            {isPushToTalkActive ? 'Release to Send' : 'Hold to Talk'}
+          </button>
+        </div>
 
-        {/* End / Retry */}
-        {status === 'error' ? (
-          <div className="flex gap-3">
+        <p className="text-center text-[11px] text-cream/35">
+          Press and hold while speaking, then release so {selectedBrand.agentName} can respond.
+        </p>
+
+        <div className="flex items-center justify-between gap-3">
+          {/* Mute */}
+          <button
+            onClick={toggleMute}
+            disabled={!isActive}
+            className={`
+              w-12 h-12 rounded-full flex items-center justify-center transition-all border flex-shrink-0
+              disabled:opacity-25 disabled:cursor-not-allowed active:scale-95
+              ${isMuted
+                ? 'border-red-500/40'
+                : 'border-white/10 hover:border-white/20'
+              }
+            `}
+            style={isMuted
+              ? { background: 'rgba(239,68,68,0.15)' }
+              : { background: 'rgba(255,255,255,0.05)' }
+            }
+            aria-label={isMuted ? 'Unmute' : 'Mute'}
+          >
+            {isMuted ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-red-400">
+                <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-cream/50">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill="currentColor"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <line x1="8" y1="23" x2="16" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            )}
+          </button>
+
+          {/* End / Retry */}
+          {status === 'error' ? (
+            <div className="flex gap-3">
+              <button
+                onClick={() => connect()}
+                className="px-5 py-3 rounded-xl text-sm font-medium active:scale-95 transition-all border"
+                style={{
+                  background: `${selectedBrand.colors.from}1A`,
+                  borderColor: `${selectedBrand.colors.from}40`,
+                  color: selectedBrand.colors.label,
+                }}
+              >
+                Try Again
+              </button>
+              <button
+                onClick={handleEndConfirm}
+                className="px-5 py-3 rounded-xl text-cream/60 text-sm font-medium active:scale-95 border"
+                style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}
+              >
+                End
+              </button>
+            </div>
+          ) : (
             <button
-              onClick={() => connect()}
-              className="px-5 py-3 rounded-xl text-sm font-medium active:scale-95 transition-all border"
-              style={{
-                background: `${selectedBrand.colors.from}1A`,
-                borderColor: `${selectedBrand.colors.from}40`,
-                color: selectedBrand.colors.label,
-              }}
-            >
-              Try Again
-            </button>
-            <button
-              onClick={handleEndConfirm}
-              className="px-5 py-3 rounded-xl text-cream/60 text-sm font-medium active:scale-95 border"
+              onClick={() => setShowEndConfirm(true)}
+              className="px-6 py-3 rounded-xl text-cream/70 text-sm font-medium active:scale-95 transition-all border"
               style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}
             >
-              End
+              End Conversation
             </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowEndConfirm(true)}
-            className="px-6 py-3 rounded-xl text-cream/70 text-sm font-medium active:scale-95 transition-all border"
-            style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}
-          >
-            End Conversation
-          </button>
-        )}
-
-        {/* Balance spacer */}
-        <div className="w-12" />
+          )}
+        </div>
       </div>
     </div>
   )

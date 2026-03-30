@@ -14,7 +14,8 @@ function readStoredBrand() {
 }
 
 export function AppProvider({ children }) {
-  // API key comes from the environment variable set in .env
+  // Optional browser-side fallback for local development.
+  // Production should use the server-issued ephemeral token endpoint.
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY ?? ''
 
   // selectedBrand is persisted to sessionStorage so a page refresh within
@@ -32,6 +33,7 @@ export function AppProvider({ children }) {
 
   const [sessionTranscript, setSessionTranscript] = useState([])
   const [sessionEndedWithError, setSessionEndedWithError] = useState(false)
+  const [sessionStartedAt, setSessionStartedAt] = useState(null)
 
   return (
     <AppContext.Provider value={{
@@ -39,6 +41,7 @@ export function AppProvider({ children }) {
       selectedBrand, setSelectedBrand,
       sessionTranscript, setSessionTranscript,
       sessionEndedWithError, setSessionEndedWithError,
+      sessionStartedAt, setSessionStartedAt,
     }}>
       {children}
     </AppContext.Provider>

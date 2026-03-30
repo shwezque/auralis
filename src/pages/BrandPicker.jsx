@@ -60,7 +60,19 @@ export default function BrandPicker() {
   return (
     <div className="flex flex-col h-screen" style={{ background: 'linear-gradient(180deg, #050D1A 0%, #030A14 100%)' }}>
       {/* Header */}
-      <div className="flex flex-col items-center pt-safe-or-14 pb-10 px-6 flex-shrink-0">
+      <div className="relative flex flex-col items-center pt-safe-or-14 pb-10 px-6 flex-shrink-0">
+        {/* Sessions history button */}
+        <button
+          onClick={() => navigate('/history')}
+          className="absolute top-safe-or-4 right-5 flex items-center gap-1.5 text-cream/35 text-xs hover:text-cream/65 transition-colors py-1.5 px-2.5 rounded-lg"
+          style={{ border: '1px solid rgba(255,255,255,0.07)' }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8"/>
+            <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+          Sessions
+        </button>
         {/* Auralis mark */}
         <div className="relative mb-5">
           <img

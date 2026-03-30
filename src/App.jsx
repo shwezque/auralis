@@ -4,6 +4,8 @@ import BrandPicker from './pages/BrandPicker'
 import Lobby from './pages/Lobby'
 import Session from './pages/Session'
 import Summary from './pages/Summary'
+import History from './pages/History'
+import HistoryDetail from './pages/HistoryDetail'
 
 function AppRoutes() {
   const { selectedBrand, sessionTranscript } = useApp()
@@ -34,6 +36,10 @@ function AppRoutes() {
             : <Navigate to="/lobby" replace />
         }
       />
+
+      {/* S4 — Session history */}
+      <Route path="/history" element={<History />} />
+      <Route path="/history/:id" element={<HistoryDetail />} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
