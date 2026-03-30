@@ -7,8 +7,8 @@ const SCRIPT_PROCESSOR_BUFFER = 2048
 // Local VAD thresholds (RMS of native audio samples)
 // Raised from 0.015 — AC hum, keyboard, background noise sit around 0.005–0.015.
 // Actual speech RMS typically lands at 0.03–0.15 even at normal conversation volume.
-const VOICE_THRESHOLD_ON  = 0.035  // above this = probably speech
-const VOICE_THRESHOLD_OFF = 0.018  // below this (with hysteresis) = silence
+const VOICE_THRESHOLD_ON  = 0.020  // above this = probably speech
+const VOICE_THRESHOLD_OFF = 0.010  // below this (with hysteresis) = silence
 const CHUNKS_TO_CONFIRM_ON  = 2    // consecutive active chunks before firing onVoiceActivity(true)
 const CHUNKS_TO_CONFIRM_OFF = 6    // consecutive silent chunks before firing onVoiceActivity(false)
 
