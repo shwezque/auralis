@@ -4,6 +4,14 @@ import { float32ToInt16, arrayBufferToBase64 } from '../lib/audioUtils'
 const TARGET_SAMPLE_RATE = 16000   // Gemini Live requires 16kHz PCM
 const SCRIPT_PROCESSOR_BUFFER = 2048
 
+// Local VAD thresholds (RMS of native audio samples)
+// Raised from 0.015 — AC hum, keyboard, background noise sit around 0.005–0.015.
+// Actual speech RMS typically lands at 0.03–0.15 even at normal conversation volume.
+const VOICE_THRESHOLD_ON  = 0.035  // above this = probably speech
+const VOICE_THRESHOLD_OFF = 0.018  // below this (with hysteresis) = silence
+const CHUNKS_TO_CONFIRM_ON  = 3    // consecutive active chunks before firing onVoiceActivity(true)
+const CHUNKS_TO_CONFIRM_OFF = 6    // consecutive silent chunks before firing onVoiceActivity(false)
+
 /**
  * Downsample a Float32Array from fromRate to toRate using linear interpolation.
  * More reliable than relying on the browser to honour a requested AudioContext rate.
@@ -51,15 +59,17 @@ function normalizeCaptureError(err) {
   return err instanceof Error ? err : new Error('Failed to start microphone capture.')
 }
 
-export function useAudioCapture({ onChunk, isActive, onError }) {
+export function useAudioCapture({ onChunk, isActive, onError, onVoiceActivity }) {
   const streamRef = useRef(null)
   const sourceRef = useRef(null)
   const processorRef = useRef(null)
   const contextRef = useRef(null)
   const onChunkRef = useRef(onChunk)
   const onErrorRef = useRef(onError)
+  const onVoiceActivityRef = useRef(onVoiceActivity)
   onChunkRef.current = onChunk
   onErrorRef.current = onError
+  onVoiceActivityRef.current = onVoiceActivity
 
   useEffect(() => {
     if (!isActive) {
@@ -96,9 +106,45 @@ export function useAudioCapture({ onChunk, isActive, onError }) {
         const processor  = context.createScriptProcessor(SCRIPT_PROCESSOR_BUFFER, 1, 1)
         processorRef.current = processor
 
+        // Local VAD state — lives inside the closure so no ref churn
+        let localVoiceActive = false
+        let consecutiveActive = 0
+        let consecutiveInactive = 0
+
         processor.onaudioprocess = (e) => {
           if (!onChunkRef.current) return
           const native     = e.inputBuffer.getChannelData(0)
+
+          // Compute RMS energy on native samples (more samples = more accurate)
+          let sumSq = 0
+          for (let i = 0; i < native.length; i++) sumSq += native[i] * native[i]
+          const rms = Math.sqrt(sumSq / native.length)
+
+          // Hysteresis-based local VAD
+          if (!localVoiceActive) {
+            if (rms >= VOICE_THRESHOLD_ON) {
+              consecutiveActive++
+              consecutiveInactive = 0
+              if (consecutiveActive >= CHUNKS_TO_CONFIRM_ON) {
+                localVoiceActive = true
+                onVoiceActivityRef.current?.(true)
+              }
+            } else {
+              consecutiveActive = 0
+            }
+          } else {
+            if (rms < VOICE_THRESHOLD_OFF) {
+              consecutiveInactive++
+              consecutiveActive = 0
+              if (consecutiveInactive >= CHUNKS_TO_CONFIRM_OFF) {
+                localVoiceActive = false
+                onVoiceActivityRef.current?.(false)
+              }
+            } else {
+              consecutiveInactive = 0
+            }
+          }
+
           const resampled  = downsampleBuffer(native, nativeRate, TARGET_SAMPLE_RATE)
           const int16      = float32ToInt16(resampled)
           const base64     = arrayBufferToBase64(int16.buffer)

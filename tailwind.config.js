@@ -137,6 +137,8 @@ export default {
         '.pt-safe-or-4':  { paddingTop:    'max(env(safe-area-inset-top, 0px), 1rem)' },
         '.pt-safe-or-6':  { paddingTop:    'max(env(safe-area-inset-top, 0px), 1.5rem)' },
         '.pt-safe-or-14': { paddingTop:    'max(env(safe-area-inset-top, 0px), 3.5rem)' },
+        '.pb-safe-or-4':  { paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)' },
+        '.pb-safe-or-5':  { paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1.25rem)' },
         '.pb-safe-or-6':  { paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1.5rem)' },
         '.pb-safe-or-8':  { paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 2rem)' },
         '.pb-safe-or-10': { paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 2.5rem)' },

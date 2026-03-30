@@ -132,7 +132,7 @@ A strong answer makes the traveler feel:
     tagline: 'Orders, menu, delivery & more',
     brandInitial: 'J',
     agentInitial: 'J',
-    voice: 'Puck',
+    voice: 'Leda',
     logo: '/logos/jollibee.svg',
     avatar: '/avatars/joy.png',
     colors: {

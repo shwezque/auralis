@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
  * Siri-style colorful waveform that animates based on conversation state.
  * Uses a canvas with multiple layered sine waves and an edge-fade envelope.
  */
-export default function VoiceWaveform({ status, brandColor }) {
+export default function VoiceWaveform({ status, brandColor, height = 82 }) {
   const canvasRef = useRef(null)
   const animRef   = useRef(null)
   const ampRef    = useRef(0)      // current smoothed amplitude (0–1)
@@ -142,7 +142,7 @@ export default function VoiceWaveform({ status, brandColor }) {
     <canvas
       ref={canvasRef}
       className="w-full"
-      style={{ height: 82, display: 'block' }}
+      style={{ height, display: 'block' }}
     />
   )
 }

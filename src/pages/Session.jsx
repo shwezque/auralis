@@ -8,7 +8,7 @@ import { saveSession } from '../lib/sessionHistory'
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
-function AgentAvatar({ status, isMuted, brand }) {
+function AgentAvatar({ status, isMuted, brand, compact = false }) {
   const isAgentSpeaking = status === 'agent-speaking'
   const isUserSpeaking  = status === 'user-speaking'
   const isListening     = status === 'listening'
@@ -16,12 +16,19 @@ function AgentAvatar({ status, isMuted, brand }) {
   const isError         = status === 'error'
   const { colors, agentInitial } = brand
 
+  const outerCls  = compact ? 'w-14 h-14' : 'w-36 h-36'
+  const innerCls  = compact ? 'w-10 h-10' : 'w-28 h-28'
+  const textCls   = compact ? 'text-base'  : 'text-4xl'
+  const badgeCls  = compact
+    ? 'bottom-0 right-0 w-3 h-3 border-[2px]'
+    : 'bottom-1 right-1 w-5 h-5 border-[2.5px]'
+
   return (
-    <div className="relative flex items-center justify-center w-36 h-36">
+    <div className={`relative flex items-center justify-center ${outerCls} flex-shrink-0`}>
       {/* Outer glow */}
       {!isError && !isConnecting && (
         <div
-          className="absolute inset-0 rounded-full opacity-20 blur-2xl"
+          className={`absolute inset-0 rounded-full opacity-20 ${compact ? 'blur-lg' : 'blur-2xl'}`}
           style={{ background: `radial-gradient(circle, ${colors.from}, transparent 70%)` }}
         />
       )}
@@ -57,7 +64,7 @@ function AgentAvatar({ status, isMuted, brand }) {
       {/* Avatar circle */}
       <div
         className={`
-          w-28 h-28 rounded-full overflow-hidden shadow-2xl transition-all duration-500 flex items-center justify-center flex-shrink-0
+          ${innerCls} rounded-full overflow-hidden shadow-2xl transition-all duration-500 flex items-center justify-center flex-shrink-0
           ${!isError && !isConnecting ? 'animate-orb-breathe' : ''}
           ${isMuted ? 'opacity-50' : ''}
         `}
@@ -66,24 +73,24 @@ function AgentAvatar({ status, isMuted, brand }) {
             ? { background: 'rgba(127,0,0,0.3)', border: '2px solid rgba(239,68,68,0.4)' }
             : {
                 background: `linear-gradient(135deg, ${colors.from}, ${colors.to})`,
-                boxShadow: `0 16px 48px ${colors.ring}`,
-                border: `2px solid ${colors.from}55`,
+                boxShadow: compact ? `0 6px 20px ${colors.ring}` : `0 16px 48px ${colors.ring}`,
+                border: `${compact ? 1 : 2}px solid ${colors.from}55`,
               }
         }
       >
         {isConnecting ? (
-          <svg className="animate-spin-slow w-9 h-9" viewBox="0 0 24 24" fill="none"
+          <svg className={`animate-spin-slow ${compact ? 'w-4 h-4' : 'w-9 h-9'}`} viewBox="0 0 24 24" fill="none"
             style={{ color: colors.avatarText }}>
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.2"/>
             <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2.5"
               strokeLinecap="round"/>
           </svg>
         ) : isError ? (
-          <span className="text-4xl font-bold font-display select-none text-red-400">!</span>
+          <span className={`${textCls} font-bold font-display select-none text-red-400`}>!</span>
         ) : brand.avatar ? (
           <img src={brand.avatar} alt={agentInitial} className="w-full h-full object-cover object-center" />
         ) : (
-          <span className="text-4xl font-bold font-display select-none" style={{ color: colors.avatarText }}>
+          <span className={`${textCls} font-bold font-display select-none`} style={{ color: colors.avatarText }}>
             {agentInitial}
           </span>
         )}
@@ -91,7 +98,7 @@ function AgentAvatar({ status, isMuted, brand }) {
 
       {/* Online badge — shown when active */}
       {(isListening || isAgentSpeaking || isUserSpeaking) && (
-        <div className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-status-green border-[2.5px]"
+        <div className={`absolute ${badgeCls} rounded-full bg-status-green`}
           style={{ borderColor: '#030A14' }} />
       )}
     </div>
@@ -116,7 +123,7 @@ function TranscriptBubble({ msg, brand }) {
         </div>
       )}
       <div className={`
-        max-w-[78%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed
+        max-w-[82%] px-3.5 py-2.5 rounded-2xl text-[15px] leading-relaxed
         ${isUser
           ? 'text-cream rounded-tr-sm'
           : 'text-cream/90 rounded-tl-sm border'}
@@ -269,7 +276,7 @@ export default function Session() {
   const stateLabel = status === 'error'
     ? (errorMessage?.split('\n')[0] || 'Something went wrong')
     : (!isVoiceInputActive && status === 'listening'
-        ? 'Tap the mic to start talking'
+        ? 'Tap the voice button to start talking'
         : (STATE_LABELS[status] || ''))
 
   const STATE_LABEL_COLOR = {
@@ -314,34 +321,37 @@ export default function Session() {
         </button>
       </div>
 
-      {/* Agent visual zone */}
-      <div className="relative flex flex-col items-center justify-center pt-6 pb-2 flex-shrink-0">
-        <AgentAvatar status={visualStatus} isMuted={isMuted} brand={selectedBrand} />
-        <div
-          className="mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 border"
-          style={{
-            background: isVoiceInputActive ? `${selectedBrand.colors.from}14` : 'rgba(255,255,255,0.03)',
-            borderColor: isVoiceInputActive ? `${selectedBrand.colors.from}33` : 'rgba(255,255,255,0.08)',
-          }}
-        >
-          <span
-            className={`w-2 h-2 rounded-full ${isVoiceInputActive ? 'bg-status-green animate-pulse' : 'bg-cream/30'}`}
-          />
-          <span className="text-[11px] tracking-[0.14em] uppercase text-cream/55">
-            {isVoiceInputActive ? 'Voice Mode On' : 'Voice Mode Off'}
-          </span>
+      {/* Agent compact bar */}
+      <div className="relative flex items-center gap-3 px-5 py-2 flex-shrink-0">
+        <AgentAvatar status={visualStatus} isMuted={isMuted} brand={selectedBrand} compact />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-cream/90 text-[13px] font-semibold truncate">{selectedBrand.agentName}</span>
+            <div
+              className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 border flex-shrink-0"
+              style={{
+                background: isVoiceInputActive ? `${selectedBrand.colors.from}14` : 'rgba(255,255,255,0.03)',
+                borderColor: isVoiceInputActive ? `${selectedBrand.colors.from}33` : 'rgba(255,255,255,0.08)',
+              }}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isVoiceInputActive ? 'bg-status-green animate-pulse' : 'bg-cream/30'}`} />
+              <span className="text-[10px] tracking-[0.12em] uppercase text-cream/55">
+                {isVoiceInputActive ? 'Live' : 'Off'}
+              </span>
+            </div>
+          </div>
+          <p
+            className={`text-[11px] mt-0.5 font-medium tracking-wide transition-all duration-300 ${STATUS_LABEL_COLOR(status, selectedBrand)}`}
+            style={status === 'agent-speaking' ? { color: selectedBrand.colors.label } : undefined}
+          >
+            {isMuted && isActive ? 'Muted' : stateLabel}
+          </p>
         </div>
-        <p
-          className={`text-xs mt-4 font-medium tracking-wide transition-all duration-300 min-h-[1rem] ${STATUS_LABEL_COLOR(status, selectedBrand)}`}
-          style={status === 'agent-speaking' ? { color: selectedBrand.colors.label } : undefined}
-        >
-          {isMuted && isActive ? 'Muted' : stateLabel}
-        </p>
       </div>
 
-      {/* Waveform */}
+      {/* Waveform — slim */}
       <div className="relative flex-shrink-0 px-6">
-        <VoiceWaveform status={visualStatus} brandColor={selectedBrand.colors.from} />
+        <VoiceWaveform status={visualStatus} brandColor={selectedBrand.colors.from} height={48} />
       </div>
 
       {/* Transcript zone */}
@@ -356,7 +366,7 @@ export default function Session() {
             )}
             {status === 'listening' && (
               <p className="text-cream/40 text-sm text-center">
-                {isVoiceInputActive ? 'Go ahead, I’m listening.' : 'Tap the mic when you want to speak.'}
+                {isVoiceInputActive ? "Go ahead, I'm listening." : 'Tap the voice button when you want to speak.'}
               </p>
             )}
             {status === 'error' && (
@@ -370,7 +380,7 @@ export default function Session() {
             )}
           </div>
         ) : (
-          <div className="flex flex-col gap-3 pb-4">
+          <div className="flex flex-col gap-2 pb-3">
             {transcript.map((msg) => (
               <TranscriptBubble key={msg.id} msg={msg} brand={selectedBrand} />
             ))}
@@ -379,154 +389,129 @@ export default function Session() {
         )}
       </div>
 
-      {/* Controls dock */}
+      {/* Controls dock — single row */}
       <div
-        className="relative flex flex-col gap-3 px-6 py-4 pb-safe-or-6 flex-shrink-0 border-t"
+        className="relative flex items-center justify-between px-8 py-4 pb-safe-or-5 flex-shrink-0 border-t"
         style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}
       >
-        <div className="flex items-center justify-center">
-          <div className="relative flex items-center justify-center w-28 h-28">
-            {isVoiceInputActive && (
-              <>
-                <div
-                  className="absolute inset-0 rounded-full border animate-ring-1"
-                  style={{ borderColor: `${selectedBrand.colors.from}66` }}
-                />
-                <div
-                  className="absolute inset-2 rounded-full border animate-ring-2"
-                  style={{ borderColor: `${selectedBrand.colors.from}40` }}
-                />
-              </>
-            )}
+        {/* Mute */}
+        <button
+          onClick={toggleMute}
+          disabled={!isActive}
+          className={`
+            w-12 h-12 rounded-full flex items-center justify-center transition-all border flex-shrink-0
+            disabled:opacity-25 disabled:cursor-not-allowed active:scale-95
+            ${isMuted ? 'border-red-500/40' : 'border-white/10'}
+          `}
+          style={isMuted ? { background: 'rgba(239,68,68,0.15)' } : { background: 'rgba(255,255,255,0.05)' }}
+          aria-label={isMuted ? 'Unmute' : 'Mute'}
+          title={isMuted ? 'Unmute' : 'Mute'}
+        >
+          {isMuted ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-red-400">
+              <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-cream/50">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill="currentColor"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="8" y1="23" x2="16" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          )}
+        </button>
 
-            <button
-              type="button"
-              onClick={toggleVoiceInput}
-              disabled={!isActive || isMuted}
-              className={`
-                relative w-24 h-24 rounded-full transition-all border flex items-center justify-center
-                disabled:opacity-25 disabled:cursor-not-allowed active:scale-[0.98]
-              `}
-              style={isVoiceInputActive
-                ? {
-                    background: `linear-gradient(145deg, ${selectedBrand.colors.from}, ${selectedBrand.colors.to})`,
-                    borderColor: `${selectedBrand.colors.from}88`,
-                    color: selectedBrand.colors.avatarText,
-                    boxShadow: `0 0 0 12px ${selectedBrand.colors.from}10, 0 24px 48px ${selectedBrand.colors.ring}`,
-                  }
-                : {
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
-                    borderColor: 'rgba(255,255,255,0.12)',
-                    color: 'rgba(255,255,255,0.82)',
-                    boxShadow: '0 18px 40px rgba(0,0,0,0.22)',
-                  }}
-              aria-label={isVoiceInputActive ? 'Stop listening' : 'Start listening'}
-            >
-              {isVoiceInputActive ? (
-                <div className="w-7 h-7 rounded-lg bg-current shadow-sm" />
-              ) : (
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill="currentColor"/>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <line x1="8" y1="23" x2="16" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              )}
-            </button>
-          </div>
-        </div>
-
-        <div className="text-center min-h-[2.5rem] flex flex-col items-center justify-center gap-1">
-          <p className="text-sm font-medium text-cream/80">
-            {isVoiceInputActive ? `${selectedBrand.agentName} is ready` : 'Tap to start a live voice conversation'}
-          </p>
-          <p className="text-[11px] text-cream/35">
-            {isVoiceInputActive ? 'Tap the button again any time to stop the mic.' : 'The waveform will show listening and speaking states.'}
-          </p>
-        </div>
-
-        <div className="flex items-center justify-between gap-3">
-          {/* Mute */}
+        {/* Mic button — center */}
+        <div className="relative flex items-center justify-center w-20 h-20">
+          {isVoiceInputActive && (
+            <>
+              <div className="absolute inset-0 rounded-full border animate-ring-1"
+                style={{ borderColor: `${selectedBrand.colors.from}66` }} />
+              <div className="absolute inset-1 rounded-full border animate-ring-2"
+                style={{ borderColor: `${selectedBrand.colors.from}40` }} />
+            </>
+          )}
           <button
-            onClick={toggleMute}
-            disabled={!isActive}
-            className={`
-              w-12 h-12 rounded-full flex items-center justify-center transition-all border flex-shrink-0
-              disabled:opacity-25 disabled:cursor-not-allowed active:scale-95
-              ${isMuted
-                ? 'border-red-500/40'
-                : 'border-white/10 hover:border-white/20'
-              }
-            `}
-            style={isMuted
-              ? { background: 'rgba(239,68,68,0.15)' }
-              : { background: 'rgba(255,255,255,0.05)' }
-            }
-            aria-label={isMuted ? 'Unmute' : 'Mute'}
-            title={isMuted ? 'Unmute' : 'Mute'}
+            type="button"
+            onClick={toggleVoiceInput}
+            disabled={!isActive || isMuted}
+            className="relative w-16 h-16 rounded-full transition-all border flex items-center justify-center disabled:opacity-25 disabled:cursor-not-allowed active:scale-[0.97]"
+            style={isVoiceInputActive
+              ? {
+                  background: `linear-gradient(145deg, ${selectedBrand.colors.from}, ${selectedBrand.colors.to})`,
+                  borderColor: `${selectedBrand.colors.from}88`,
+                  color: selectedBrand.colors.avatarText,
+                  boxShadow: `0 0 0 8px ${selectedBrand.colors.from}10, 0 16px 32px ${selectedBrand.colors.ring}`,
+                }
+              : {
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
+                  borderColor: 'rgba(255,255,255,0.12)',
+                  color: 'rgba(255,255,255,0.82)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.22)',
+                }}
+            aria-label={isVoiceInputActive ? 'Stop listening' : 'Start listening'}
           >
-            {isMuted ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-red-400">
-                <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
+            {isVoiceInputActive ? (
+              <div className="w-5 h-5 rounded-md bg-current shadow-sm" />
             ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-cream/50">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill="currentColor"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                <line x1="8" y1="23" x2="16" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <svg width="26" height="20" viewBox="0 0 26 20" fill="currentColor">
+                <rect x="0"  y="7"  width="4" height="6"  rx="2" />
+                <rect x="6"  y="3"  width="4" height="14" rx="2" />
+                <rect x="12" y="0"  width="4" height="20" rx="2" />
+                <rect x="18" y="3"  width="4" height="14" rx="2" />
+                <rect x="24" y="7"  width="2" height="6"  rx="1" />
               </svg>
             )}
           </button>
+        </div>
 
-          {/* End / Retry */}
-          {status === 'error' ? (
-            <div className="flex gap-3">
-              <button
-                onClick={() => connect()}
-                className="w-12 h-12 rounded-full flex items-center justify-center active:scale-95 transition-all border"
-                style={{
-                  background: `${selectedBrand.colors.from}1A`,
-                  borderColor: `${selectedBrand.colors.from}40`,
-                  color: selectedBrand.colors.label,
-                }}
-                aria-label="Try again"
-                title="Try again"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <path d="M20 11a8 8 0 1 0 2.34 5.66" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <path d="M20 4v7h-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              <button
-                onClick={handleEndConfirm}
-                className="w-12 h-12 rounded-full flex items-center justify-center text-cream/60 active:scale-95 border"
-                style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}
-                aria-label="End session"
-                title="End session"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </button>
-            </div>
-          ) : (
+        {/* End / Retry */}
+        {status === 'error' ? (
+          <div className="flex gap-2">
             <button
-              onClick={() => setShowEndConfirm(true)}
-              className="w-12 h-12 rounded-full flex items-center justify-center text-cream/70 active:scale-95 transition-all border"
-              style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}
-              aria-label="End conversation"
-              title="End conversation"
+              onClick={() => connect()}
+              className="w-12 h-12 rounded-full flex items-center justify-center active:scale-95 transition-all border"
+              style={{
+                background: `${selectedBrand.colors.from}1A`,
+                borderColor: `${selectedBrand.colors.from}40`,
+                color: selectedBrand.colors.label,
+              }}
+              aria-label="Try again"
+              title="Try again"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M20 11a8 8 0 1 0 2.34 5.66" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M20 4v7h-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            <button
+              onClick={handleEndConfirm}
+              className="w-12 h-12 rounded-full flex items-center justify-center text-cream/60 active:scale-95 border"
+              style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}
+              aria-label="End session"
+              title="End session"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowEndConfirm(true)}
+            className="w-12 h-12 rounded-full flex items-center justify-center text-cream/70 active:scale-95 transition-all border"
+            style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}
+            aria-label="End conversation"
+            title="End conversation"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   )

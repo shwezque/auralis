@@ -50,6 +50,10 @@ export function deleteSession(id) {
   writeSessions(readSessions().filter(s => s.id !== id))
 }
 
+export function clearAllSessions() {
+  writeSessions([])
+}
+
 export function updateSessionSummary(id, summary) {
   writeSessions(readSessions().map(s => s.id === id ? { ...s, summary } : s))
 }

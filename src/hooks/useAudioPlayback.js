@@ -64,10 +64,18 @@ export function useAudioPlayback() {
     })
     activeSourcesRef.current = []
     nextStartTimeRef.current = 0
+    // Do NOT close the AudioContext — keeping it alive avoids the autoplay
+    // re-suspension on recreation, which drops the first 1-2 chunks of every
+    // new agent response and causes the "breaks mid-sentence" symptom.
+  }, [])
 
-    if (contextRef.current && contextRef.current.state !== 'closed') {
-      contextRef.current.close().catch(() => {})
-      contextRef.current = null
+  // Only close the context on unmount
+  useEffect(() => {
+    return () => {
+      activeSourcesRef.current.forEach((s) => { try { s.stop() } catch (_) {} })
+      if (contextRef.current && contextRef.current.state !== 'closed') {
+        contextRef.current.close().catch(() => {})
+      }
     }
   }, [])
 

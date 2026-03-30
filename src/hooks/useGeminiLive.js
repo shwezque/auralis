@@ -85,12 +85,17 @@ export function useGeminiLive({
 
   const sessionRef = useRef(null)
   const isMutedRef = useRef(false)
+  const statusRef = useRef('idle')
+  const canSendAudioRef = useRef(canSendAudio)
   const sessionStartRef = useRef(null)
   const { playChunk, stopAll } = useAudioPlayback()
   const handleMessageRef = useRef(null)
 
   // Keep muted ref in sync
   useEffect(() => { isMutedRef.current = isMuted }, [isMuted])
+  // Keep status and canSendAudio refs in sync for use in stable callbacks
+  useEffect(() => { statusRef.current = status }, [status])
+  useEffect(() => { canSendAudioRef.current = canSendAudio }, [canSendAudio])
 
   // --- Transcript helpers ---
 
@@ -102,7 +107,12 @@ export function useGeminiLive({
     setTranscript((prev) => {
       const last = prev[prev.length - 1]
       if (last?.role === 'user' && !last.complete) {
-        return [...prev.slice(0, -1), { ...last, text }]
+        // Gemini sends inputTranscription as incremental deltas — append, don't replace.
+        const prev_text = last.text || ''
+        const joined = prev_text && !prev_text.endsWith(' ') && !text.startsWith(' ')
+          ? prev_text + ' ' + text
+          : prev_text + text
+        return [...prev.slice(0, -1), { ...last, text: joined }]
       }
       return [...prev, { id: `u-${Date.now()}`, role: 'user', text, ts: elapsedMs(), complete: false }]
     })
@@ -195,9 +205,24 @@ export function useGeminiLive({
     setStatus('error')
   }, [agentName, stopAll])
 
+  // --- Local VAD: instant interruption without waiting for server round-trip ---
+  const handleLocalVoiceActivity = useCallback((isVoiceActive) => {
+    // Only act when voice mode is on and user starts speaking while agent is playing
+    if (!canSendAudioRef.current) return
+    if (isVoiceActive && statusRef.current === 'agent-speaking') {
+      stopAll()
+      setStatus('user-speaking')
+    }
+  }, [stopAll])
+
   // --- Audio capture (active when connected) ---
   const isCapturing = status !== 'idle' && status !== 'connecting' && status !== 'error'
-  useAudioCapture({ onChunk: sendAudioChunk, isActive: isCapturing, onError: handleCaptureError })
+  useAudioCapture({
+    onChunk: sendAudioChunk,
+    isActive: isCapturing,
+    onError: handleCaptureError,
+    onVoiceActivity: handleLocalVoiceActivity,
+  })
 
   // --- Connect ---
   const connect = useCallback(async () => {
@@ -251,10 +276,10 @@ export function useGeminiLive({
                 turnCoverage: TurnCoverage.TURN_INCLUDES_ONLY_ACTIVITY,
                 automaticActivityDetection: {
                   disabled: false,
-                  startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_HIGH,
+                  startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW,
                   endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH,
                   prefixPaddingMs: 80,
-                  silenceDurationMs: 220,
+                  silenceDurationMs: 200,
                 },
               },
             },
