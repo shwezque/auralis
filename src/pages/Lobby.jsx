@@ -1,20 +1,30 @@
 import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import BrandLogo from '../components/BrandLogo'
 
 export default function Lobby() {
   const { selectedBrand, setSelectedBrand } = useApp()
   const navigate = useNavigate()
+  const [isStarting, setIsStarting] = useState(false)
 
   if (!selectedBrand) return null
 
   const { brandName, agentName, agentInitial, agentRole, colors, starters } = selectedBrand
 
-  function handleStart() {
-    // Fire-and-forget — prompts mic permission early but doesn't block navigation.
-    // Session.jsx handles all mic permission outcomes via useGeminiLive.
-    navigator.mediaDevices?.getUserMedia({ audio: true }).catch(() => {})
-    navigate('/session')
+  async function handleStart() {
+    if (isStarting) return
+    setIsStarting(true)
+
+    try {
+      const stream = await navigator.mediaDevices?.getUserMedia({ audio: true })
+      stream?.getTracks().forEach((track) => track.stop())
+    } catch (_) {
+      // Session handles the detailed microphone error state.
+    } finally {
+      navigate('/session')
+      setIsStarting(false)
+    }
   }
 
   function handleBack() {
@@ -102,14 +112,16 @@ export default function Lobby() {
       <div className="px-6 pb-10 pt-2 flex flex-col items-center gap-2.5 flex-shrink-0">
         <button
           onClick={handleStart}
+          disabled={isStarting}
           className="w-full text-[15px] font-semibold py-4 rounded-2xl active:scale-[0.98] transition-transform"
           style={{
             background: `linear-gradient(135deg, ${colors.from}, ${colors.to})`,
             color: colors.avatarText,
             boxShadow: `0 8px 28px ${colors.ring}`,
+            opacity: isStarting ? 0.85 : 1,
           }}
         >
-          Talk to {agentName}
+          {isStarting ? 'Starting…' : `Talk to ${agentName}`}
         </button>
         <p className="text-cream/30 text-xs text-center">
           Tap to start · microphone required

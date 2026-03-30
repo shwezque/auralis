@@ -1,7 +1,6 @@
-import { GoogleGenAI } from '@google/genai'
-
 const STORAGE_KEY = 'auralis_sessions'
 const MAX_SESSIONS = 200
+const SUMMARY_ENDPOINT = '/api/session-summary'
 
 function readSessions() {
   try {
@@ -56,20 +55,25 @@ export function updateSessionSummary(id, summary) {
 }
 
 /**
- * Generate a 2–3 sentence AI summary of a session transcript using Gemini.
+ * Generate a 2–3 sentence AI summary of a session transcript using the server API.
  */
-export async function generateSummary(transcript, apiKey) {
+export async function generateSummary(transcript) {
   const turns = transcript.filter(m => m.text?.trim())
   if (turns.length === 0) return 'No conversation content was captured.'
 
-  const text = turns
-    .map(m => `${m.role === 'user' ? 'Customer' : 'Agent'}: ${m.text}`)
-    .join('\n')
-
-  const ai = new GoogleGenAI({ apiKey })
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: `Summarize the following customer service conversation in 2–3 short sentences. State what the customer needed and what was discussed or resolved. Be factual, specific, and concise.\n\n${text}`,
+  const response = await fetch(SUMMARY_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ transcript: turns }),
   })
-  return response.text?.trim() || 'Summary unavailable.'
+
+  if (!response.ok) {
+    throw new Error(`summary request failed (${response.status})`)
+  }
+
+  const payload = await response.json()
+  return payload?.summary?.trim() || 'Summary unavailable.'
 }

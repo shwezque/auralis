@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { float32ToInt16, arrayBufferToBase64 } from '../lib/audioUtils'
 
 const TARGET_SAMPLE_RATE = 16000   // Gemini Live requires 16kHz PCM
-const SCRIPT_PROCESSOR_BUFFER = 4096
+const SCRIPT_PROCESSOR_BUFFER = 2048
 
 /**
  * Downsample a Float32Array from fromRate to toRate using linear interpolation.
@@ -32,12 +32,34 @@ function downsampleBuffer(buffer, fromRate, toRate) {
  * explicitly to 16kHz — avoids relying on browsers honouring a custom rate
  * (some silently ignore it, causing garbled/unspeakable audio to the model).
  */
-export function useAudioCapture({ onChunk, isActive }) {
-  const streamRef    = useRef(null)
+function normalizeCaptureError(err) {
+  const name = err?.name || ''
+
+  if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+    return new Error('Microphone permission was denied.')
+  }
+  if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+    return new Error('No microphone was found on this device.')
+  }
+  if (name === 'NotReadableError' || name === 'TrackStartError') {
+    return new Error('The microphone is being used by another app.')
+  }
+  if (name === 'SecurityError') {
+    return new Error('Microphone access requires HTTPS or localhost.')
+  }
+
+  return err instanceof Error ? err : new Error('Failed to start microphone capture.')
+}
+
+export function useAudioCapture({ onChunk, isActive, onError }) {
+  const streamRef = useRef(null)
+  const sourceRef = useRef(null)
   const processorRef = useRef(null)
-  const contextRef   = useRef(null)
-  const onChunkRef   = useRef(onChunk)
+  const contextRef = useRef(null)
+  const onChunkRef = useRef(onChunk)
+  const onErrorRef = useRef(onError)
   onChunkRef.current = onChunk
+  onErrorRef.current = onError
 
   useEffect(() => {
     if (!isActive) {
@@ -70,6 +92,7 @@ export function useAudioCapture({ onChunk, isActive }) {
 
         const nativeRate = context.sampleRate   // typically 44100 or 48000
         const source     = context.createMediaStreamSource(stream)
+        sourceRef.current = source
         const processor  = context.createScriptProcessor(SCRIPT_PROCESSOR_BUFFER, 1, 1)
         processorRef.current = processor
 
@@ -86,7 +109,9 @@ export function useAudioCapture({ onChunk, isActive }) {
         // Must connect to destination to keep ScriptProcessorNode active
         processor.connect(context.destination)
       } catch (err) {
-        console.error('[AudioCapture] Failed to start:', err)
+        const normalized = normalizeCaptureError(err)
+        console.error('[AudioCapture] Failed to start:', normalized)
+        onErrorRef.current?.(normalized)
       }
     }
 
@@ -96,6 +121,10 @@ export function useAudioCapture({ onChunk, isActive }) {
   }, [isActive])
 
   function cleanup() {
+    if (sourceRef.current) {
+      sourceRef.current.disconnect()
+      sourceRef.current = null
+    }
     if (processorRef.current) {
       processorRef.current.disconnect()
       processorRef.current = null

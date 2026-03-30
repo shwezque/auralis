@@ -29,26 +29,40 @@ export default function VoiceWaveform({ status, brandColor }) {
     // Target amplitude per status
     function targetAmp() {
       if (status === 'agent-speaking') return 1.0
-      if (status === 'user-speaking')  return 0.55
-      if (status === 'listening')      return 0.08
-      if (status === 'connecting')     return 0.04
+      if (status === 'user-speaking')  return 0.66
+      if (status === 'listening')      return 0.16
+      if (status === 'connecting')     return 0.06
       return 0.0
+    }
+
+    function paletteForStatus() {
+      if (status === 'user-speaking') {
+        return ['#60A5FA', '#22D3EE', '#93C5FD', '#FFFFFF']
+      }
+      if (status === 'agent-speaking') {
+        return ['#8B5CF6', '#3B82F6', primary, '#FFFFFF']
+      }
+      if (status === 'listening') {
+        return [primary, '#22D3EE', '#A78BFA', '#FFFFFF']
+      }
+      return [primary, '#3B82F6', '#8B5CF6', '#FFFFFF']
     }
 
     // Wave definitions — layered for depth
     // Each: { freqMult, speedMult, ampScale, color, alpha, width }
     const primary   = brandColor || '#06B6D4'
+    const palette = paletteForStatus()
     const WAVES = [
       // Back fill — widest, low alpha
-      { freqMult: 0.90, speedMult: 0.55, ampScale: 0.90, color: '#8B5CF6', alpha: 0.28, width: 2.5 },
-      { freqMult: 1.10, speedMult: 0.75, ampScale: 0.80, color: '#3B82F6', alpha: 0.28, width: 2.0 },
+      { freqMult: 0.90, speedMult: status === 'listening' ? 0.36 : 0.55, ampScale: 0.90, color: palette[2], alpha: 0.24, width: 2.5 },
+      { freqMult: 1.10, speedMult: status === 'listening' ? 0.5 : 0.75, ampScale: 0.80, color: palette[1], alpha: 0.28, width: 2.0 },
       // Mid layer
-      { freqMult: 0.75, speedMult: 1.10, ampScale: 0.72, color: '#F0ABFC', alpha: 0.38, width: 2.0 },
-      { freqMult: 1.25, speedMult: 0.90, ampScale: 0.60, color: '#06B6D4', alpha: 0.42, width: 2.0 },
+      { freqMult: 0.75, speedMult: status === 'listening' ? 0.72 : 1.10, ampScale: 0.72, color: palette[2], alpha: 0.34, width: 2.0 },
+      { freqMult: 1.25, speedMult: status === 'listening' ? 0.64 : 0.90, ampScale: 0.60, color: palette[0], alpha: 0.42, width: 2.0 },
       // Primary brand wave
-      { freqMult: 1.00, speedMult: 1.00, ampScale: 1.00, color: primary,   alpha: 0.80, width: 2.8 },
+      { freqMult: 1.00, speedMult: status === 'listening' ? 0.82 : 1.00, ampScale: 1.00, color: palette[0], alpha: 0.84, width: 2.8 },
       // White highlight — thinnest, highest frequency
-      { freqMult: 1.60, speedMult: 1.40, ampScale: 0.35, color: '#FFFFFF', alpha: 0.55, width: 1.5 },
+      { freqMult: 1.60, speedMult: status === 'listening' ? 1.05 : 1.40, ampScale: 0.35, color: palette[3], alpha: 0.55, width: 1.5 },
     ]
 
     const BASE_FREQ  = 0.022  // spatial frequency (radians per pixel)
@@ -86,6 +100,15 @@ export default function VoiceWaveform({ status, brandColor }) {
         return
       }
 
+      if (status === 'listening') {
+        const gradient = ctx.createLinearGradient(0, 0, logicalW, 0)
+        gradient.addColorStop(0, 'rgba(255,255,255,0)')
+        gradient.addColorStop(0.5, `${primary}22`)
+        gradient.addColorStop(1, 'rgba(255,255,255,0)')
+        ctx.fillStyle = gradient
+        ctx.fillRect(0, CY - 18, logicalW, 36)
+      }
+
       for (const wave of WAVES) {
         const waveAmp = amp * MAX_AMP * wave.ampScale
 
@@ -119,7 +142,7 @@ export default function VoiceWaveform({ status, brandColor }) {
     <canvas
       ref={canvasRef}
       className="w-full"
-      style={{ height: 72, display: 'block' }}
+      style={{ height: 82, display: 'block' }}
     />
   )
 }

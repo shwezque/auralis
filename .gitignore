@@ -2,3 +2,7 @@ node_modules/
 dist/
 .env
 .vercel/
+
+.DS_Store
+public/avatars/archive/
+public/avatars/.vercel/

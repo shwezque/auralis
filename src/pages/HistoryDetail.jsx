@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getSession, updateSessionSummary, generateSummary, deleteSession } from '../lib/sessionHistory'
-import { useApp } from '../context/AppContext'
 
 function formatTimestamp(ms) {
   const totalSecs = Math.floor((ms || 0) / 1000)
@@ -68,7 +67,6 @@ function TranscriptBubble({ msg, session }) {
 export default function HistoryDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { apiKey } = useApp()
 
   const [session, setSession] = useState(null)
   const [summaryState, setSummaryState] = useState('idle') // idle | loading | done | error
@@ -94,7 +92,7 @@ export default function HistoryDetail() {
     }
 
     setSummaryState('loading')
-    generateSummary(session.transcript, apiKey)
+    generateSummary(session.transcript)
       .then(summary => {
         updateSessionSummary(session.id, summary)
         setSession(prev => ({ ...prev, summary }))

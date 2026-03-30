@@ -175,7 +175,7 @@ export default function Session() {
   const { apiKey, selectedBrand, setSessionTranscript, setSessionEndedWithError, sessionStartedAt, setSessionStartedAt } = useApp()
   const navigate = useNavigate()
   const [showEndConfirm, setShowEndConfirm] = useState(false)
-  const [isPushToTalkActive, setIsPushToTalkActive] = useState(false)
+  const [isVoiceInputActive, setIsVoiceInputActive] = useState(false)
   const transcriptBottomRef = useRef(null)
   const userScrolledRef = useRef(false)
   const scrollTimerRef = useRef(null)
@@ -186,7 +186,7 @@ export default function Session() {
       systemPrompt: selectedBrand.systemPrompt,
       voice: selectedBrand.voice,
       agentName: selectedBrand.agentName,
-      canSendAudio: isPushToTalkActive,
+      canSendAudio: isVoiceInputActive,
     })
 
   // Block browser back-swipe while session is active.
@@ -234,6 +234,7 @@ export default function Session() {
   }
 
   function handleEndConfirm() {
+    setIsVoiceInputActive(false)
     disconnect()
     const validTranscript = transcript.filter(m => m.text?.trim())
     if (validTranscript.length > 0) {
@@ -248,16 +249,13 @@ export default function Session() {
     setShowEndConfirm(false)
   }
 
-  function startPushToTalk() {
+  function toggleVoiceInput() {
     if (!isActive || isMuted) return
-    setIsPushToTalkActive(true)
-  }
-
-  function stopPushToTalk() {
-    setIsPushToTalkActive(false)
+    setIsVoiceInputActive((active) => !active)
   }
 
   const isActive = status !== 'idle' && status !== 'error'
+  const visualStatus = !isVoiceInputActive && status === 'listening' ? 'idle' : status
 
   const STATE_LABELS = {
     connecting:      'Connecting…',
@@ -270,7 +268,9 @@ export default function Session() {
 
   const stateLabel = status === 'error'
     ? (errorMessage?.split('\n')[0] || 'Something went wrong')
-    : (isPushToTalkActive ? 'Listening to your tap-to-speak input…' : (STATE_LABELS[status] || ''))
+    : (!isVoiceInputActive && status === 'listening'
+        ? 'Tap the mic to start talking'
+        : (STATE_LABELS[status] || ''))
 
   const STATE_LABEL_COLOR = {
     connecting:      'text-cream/50',
@@ -316,7 +316,21 @@ export default function Session() {
 
       {/* Agent visual zone */}
       <div className="relative flex flex-col items-center justify-center pt-6 pb-2 flex-shrink-0">
-        <AgentAvatar status={status} isMuted={isMuted} brand={selectedBrand} />
+        <AgentAvatar status={visualStatus} isMuted={isMuted} brand={selectedBrand} />
+        <div
+          className="mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 border"
+          style={{
+            background: isVoiceInputActive ? `${selectedBrand.colors.from}14` : 'rgba(255,255,255,0.03)',
+            borderColor: isVoiceInputActive ? `${selectedBrand.colors.from}33` : 'rgba(255,255,255,0.08)',
+          }}
+        >
+          <span
+            className={`w-2 h-2 rounded-full ${isVoiceInputActive ? 'bg-status-green animate-pulse' : 'bg-cream/30'}`}
+          />
+          <span className="text-[11px] tracking-[0.14em] uppercase text-cream/55">
+            {isVoiceInputActive ? 'Voice Mode On' : 'Voice Mode Off'}
+          </span>
+        </div>
         <p
           className={`text-xs mt-4 font-medium tracking-wide transition-all duration-300 min-h-[1rem] ${STATUS_LABEL_COLOR(status, selectedBrand)}`}
           style={status === 'agent-speaking' ? { color: selectedBrand.colors.label } : undefined}
@@ -327,7 +341,7 @@ export default function Session() {
 
       {/* Waveform */}
       <div className="relative flex-shrink-0 px-6">
-        <VoiceWaveform status={status} brandColor={selectedBrand.colors.from} />
+        <VoiceWaveform status={visualStatus} brandColor={selectedBrand.colors.from} />
       </div>
 
       {/* Transcript zone */}
@@ -341,7 +355,9 @@ export default function Session() {
               <p className="text-cream/40 text-sm text-center">Starting your session…</p>
             )}
             {status === 'listening' && (
-              <p className="text-cream/40 text-sm text-center">Say something to begin.</p>
+              <p className="text-cream/40 text-sm text-center">
+                {isVoiceInputActive ? 'Go ahead, I’m listening.' : 'Tap the mic when you want to speak.'}
+              </p>
             )}
             {status === 'error' && (
               <div className="w-full max-w-xs rounded-2xl border p-5 text-center"
@@ -369,41 +385,65 @@ export default function Session() {
         style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}
       >
         <div className="flex items-center justify-center">
-          <button
-            type="button"
-            onMouseDown={startPushToTalk}
-            onMouseUp={stopPushToTalk}
-            onMouseLeave={stopPushToTalk}
-            onTouchStart={startPushToTalk}
-            onTouchEnd={stopPushToTalk}
-            onTouchCancel={stopPushToTalk}
-            disabled={!isActive || isMuted}
-            className={`
-              w-full max-w-xs py-4 rounded-2xl text-sm font-semibold transition-all border select-none
-              disabled:opacity-25 disabled:cursor-not-allowed
-              ${isPushToTalkActive ? 'scale-[0.98]' : 'active:scale-[0.98]'}
-            `}
-            style={isPushToTalkActive
-              ? {
-                  background: `${selectedBrand.colors.from}30`,
-                  borderColor: `${selectedBrand.colors.from}66`,
-                  color: selectedBrand.colors.label,
-                  boxShadow: `0 0 0 8px ${selectedBrand.colors.from}14`,
-                }
-              : {
-                  background: 'rgba(255,255,255,0.04)',
-                  borderColor: 'rgba(255,255,255,0.08)',
-                  color: 'rgba(255,255,255,0.75)',
-                }}
-            aria-label="Tap and hold to speak"
-          >
-            {isPushToTalkActive ? 'Release to Send' : 'Hold to Talk'}
-          </button>
+          <div className="relative flex items-center justify-center w-28 h-28">
+            {isVoiceInputActive && (
+              <>
+                <div
+                  className="absolute inset-0 rounded-full border animate-ring-1"
+                  style={{ borderColor: `${selectedBrand.colors.from}66` }}
+                />
+                <div
+                  className="absolute inset-2 rounded-full border animate-ring-2"
+                  style={{ borderColor: `${selectedBrand.colors.from}40` }}
+                />
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={toggleVoiceInput}
+              disabled={!isActive || isMuted}
+              className={`
+                relative w-24 h-24 rounded-full transition-all border flex items-center justify-center
+                disabled:opacity-25 disabled:cursor-not-allowed active:scale-[0.98]
+              `}
+              style={isVoiceInputActive
+                ? {
+                    background: `linear-gradient(145deg, ${selectedBrand.colors.from}, ${selectedBrand.colors.to})`,
+                    borderColor: `${selectedBrand.colors.from}88`,
+                    color: selectedBrand.colors.avatarText,
+                    boxShadow: `0 0 0 12px ${selectedBrand.colors.from}10, 0 24px 48px ${selectedBrand.colors.ring}`,
+                  }
+                : {
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
+                    borderColor: 'rgba(255,255,255,0.12)',
+                    color: 'rgba(255,255,255,0.82)',
+                    boxShadow: '0 18px 40px rgba(0,0,0,0.22)',
+                  }}
+              aria-label={isVoiceInputActive ? 'Stop listening' : 'Start listening'}
+            >
+              {isVoiceInputActive ? (
+                <div className="w-7 h-7 rounded-lg bg-current shadow-sm" />
+              ) : (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill="currentColor"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <line x1="8" y1="23" x2="16" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
 
-        <p className="text-center text-[11px] text-cream/35">
-          Press and hold while speaking, then release so {selectedBrand.agentName} can respond.
-        </p>
+        <div className="text-center min-h-[2.5rem] flex flex-col items-center justify-center gap-1">
+          <p className="text-sm font-medium text-cream/80">
+            {isVoiceInputActive ? `${selectedBrand.agentName} is ready` : 'Tap to start a live voice conversation'}
+          </p>
+          <p className="text-[11px] text-cream/35">
+            {isVoiceInputActive ? 'Tap the button again any time to stop the mic.' : 'The waveform will show listening and speaking states.'}
+          </p>
+        </div>
 
         <div className="flex items-center justify-between gap-3">
           {/* Mute */}
@@ -423,6 +463,7 @@ export default function Session() {
               : { background: 'rgba(255,255,255,0.05)' }
             }
             aria-label={isMuted ? 'Unmute' : 'Mute'}
+            title={isMuted ? 'Unmute' : 'Mute'}
           >
             {isMuted ? (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-red-400">
@@ -446,30 +487,43 @@ export default function Session() {
             <div className="flex gap-3">
               <button
                 onClick={() => connect()}
-                className="px-5 py-3 rounded-xl text-sm font-medium active:scale-95 transition-all border"
+                className="w-12 h-12 rounded-full flex items-center justify-center active:scale-95 transition-all border"
                 style={{
                   background: `${selectedBrand.colors.from}1A`,
                   borderColor: `${selectedBrand.colors.from}40`,
                   color: selectedBrand.colors.label,
                 }}
+                aria-label="Try again"
+                title="Try again"
               >
-                Try Again
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M20 11a8 8 0 1 0 2.34 5.66" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M20 4v7h-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </button>
               <button
                 onClick={handleEndConfirm}
-                className="px-5 py-3 rounded-xl text-cream/60 text-sm font-medium active:scale-95 border"
+                className="w-12 h-12 rounded-full flex items-center justify-center text-cream/60 active:scale-95 border"
                 style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}
+                aria-label="End session"
+                title="End session"
               >
-                End
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
               </button>
             </div>
           ) : (
             <button
               onClick={() => setShowEndConfirm(true)}
-              className="px-6 py-3 rounded-xl text-cream/70 text-sm font-medium active:scale-95 transition-all border"
+              className="w-12 h-12 rounded-full flex items-center justify-center text-cream/70 active:scale-95 transition-all border"
               style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}
+              aria-label="End conversation"
+              title="End conversation"
             >
-              End Conversation
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
             </button>
           )}
         </div>
