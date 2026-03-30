@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/shaun/.claude/commands/**)",
+      "Edit(~/.claude/skills/frontend-prototype-build/**)",
+      "mcp__claude_ai_Vercel__deploy_to_vercel",
+      "mcp__claude_ai_Vercel__web_fetch_vercel_url"
+    ],
+    "additionalDirectories": [
+      "/Users/shaun/.claude"
+    ]
+  }
+}
