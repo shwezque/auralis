@@ -67,7 +67,7 @@ export default function Lobby() {
             }}
           >
             {selectedBrand.avatar ? (
-              <img src={selectedBrand.avatar} alt={agentName} className="w-full h-full object-cover object-top" />
+              <img src={selectedBrand.avatar} alt={agentName} className="w-full h-full object-cover object-center" />
             ) : (
               <span className="text-4xl font-bold font-display select-none" style={{ color: colors.avatarText }}>
                 {agentInitial}

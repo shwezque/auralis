@@ -25,7 +25,7 @@ function BrandCard({ brand, onSelect }) {
             style={{ background: `linear-gradient(135deg, ${brand.colors.from}, ${brand.colors.to})` }}
           >
             {brand.avatar
-              ? <img src={brand.avatar} alt={brand.agentName} className="w-full h-full object-cover object-top" />
+              ? <img src={brand.avatar} alt={brand.agentName} className="w-full h-full object-cover object-center" />
               : <span className="text-[9px] font-bold font-display text-white">{brand.agentInitial}</span>
             }
           </div>

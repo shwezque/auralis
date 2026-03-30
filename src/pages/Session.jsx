@@ -80,7 +80,7 @@ function AgentAvatar({ status, isMuted, brand }) {
         ) : isError ? (
           <span className="text-4xl font-bold font-display select-none text-red-400">!</span>
         ) : brand.avatar ? (
-          <img src={brand.avatar} alt={agentInitial} className="w-full h-full object-cover object-top" />
+          <img src={brand.avatar} alt={agentInitial} className="w-full h-full object-cover object-center" />
         ) : (
           <span className="text-4xl font-bold font-display select-none" style={{ color: colors.avatarText }}>
             {agentInitial}
@@ -109,7 +109,7 @@ function TranscriptBubble({ msg, brand }) {
           style={{ background: `linear-gradient(135deg, ${brand.colors.from}, ${brand.colors.to})` }}
         >
           {brand.avatar
-            ? <img src={brand.avatar} alt={brand.agentInitial} className="w-full h-full object-cover object-top" />
+            ? <img src={brand.avatar} alt={brand.agentInitial} className="w-full h-full object-cover object-center" />
             : <span className="text-xs font-bold font-display" style={{ color: brand.colors.avatarText }}>{brand.agentInitial}</span>
           }
         </div>

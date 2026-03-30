@@ -20,7 +20,7 @@ function TranscriptBubble({ msg, brand }) {
             style={{ background: `linear-gradient(135deg, ${brand.colors.from}, ${brand.colors.to})` }}
           >
             {brand.avatar
-              ? <img src={brand.avatar} alt={brand.agentInitial} className="w-full h-full object-cover object-top" />
+              ? <img src={brand.avatar} alt={brand.agentInitial} className="w-full h-full object-cover object-center" />
               : <span className="text-xs font-bold font-display leading-none" style={{ color: brand.colors.avatarText }}>{brand.agentInitial}</span>
             }
           </div>
