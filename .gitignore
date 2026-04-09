@@ -6,3 +6,7 @@ dist/
 .DS_Store
 public/avatars/archive/
 public/avatars/.vercel/
+
+# Internal tooling
+.claude/
+docs/execution-log.md
